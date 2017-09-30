@@ -70,7 +70,7 @@ fi
 cd /opt/athenz/athenz-ui*/
 if [ ! -f "./config/athenz.conf" ]; then
     echo "---generate Athenz UI Configuration File---"
-    sudo /opt/athenz/athenz-utils*/bin/linux/athenz-conf -o ./config/athenz.conf -c /opt/athenz/athenz-zms*/var/zms_server/certs/zms_cert.pem -z https://$hostname:4443/
+    sudo /opt/athenz/athenz-utils*/bin/linux/athenz-conf -k -o ./config/athenz.conf -c /opt/athenz/athenz-zms*/var/zms_server/certs/zms_cert.pem -z https://$hostname:4443/
 fi
 
 echo "---installing npm packages for athenz ui---"
@@ -114,7 +114,7 @@ fi
 cd /opt/athenz/athenz-zts*
 if [ ! -f "./conf/zts_server/athenz.conf" ]; then
     echo "---generate Athenz Configuration File---"
-    sudo /opt/athenz/athenz-utils*/bin/linux/athenz-conf -o ./conf/zts_server/athenz.conf -c /opt/athenz/athenz-zts*/var/zts_server/certs/zms_cert.pem -z https://$hostname:4443/ -t https://$hostname:8443/
+    sudo /opt/athenz/athenz-utils*/bin/linux/athenz-conf -k -o ./conf/zts_server/athenz.conf -c /opt/athenz/athenz-zts*/var/zts_server/certs/zms_cert.pem -z https://$hostname:4443/ -t https://$hostname:8443/
 fi
 
 cd /opt/athenz/athenz-utils*/bin/linux

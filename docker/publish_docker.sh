@@ -5,11 +5,11 @@ echo "-----------------------------------------------"
 echo "Creating Athenz Docker image..."
 echo "-----------------------------------------------"
 
-docker build -t athenz/athenz .
+docker build -t tatyano/athenz .
 docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-echo "tagging Athenz Docker image with tag: $TRAVIS_TAG"
-docker tag athenz/athenz athenz/athenz:$TRAVIS_TAG
-docker push athenz/athenz
+echo "tagging Athenz Docker image with tag: latest"
+docker tag tatyano/athenz tatyano/athenz:latest
+docker push tatyano/athenz
 
 echo "-----------------------------------------------"
 echo "Athenz Docker Image Completed"
