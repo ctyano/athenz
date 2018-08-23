@@ -6,8 +6,10 @@ echo "running start.sh as `whoami`"
 
 echo "---create athenz user---"
 echo athenz:athenz::::/home/athenz:/bin/bash | sudo newusers
+echo tatsuya:athenz::::/home/tatsuya:/bin/bash | sudo newusers
+echo john:athenz::::/home/john:/bin/bash | sudo newusers
 
-cd /opt/athenz/athenz-zms*
+cd /opt/athenz/athenz-zms-*-SNAPSHOT
 if [ ! -f "./var/zms_server/keys/zms_private.pem" ]; then
     echo "---initializing zms---"
     sed -ie 's/${USER}/athenz/g' /opt/athenz/athenz-zms*/conf/zms_server/zms.properties
@@ -29,7 +31,7 @@ do
 done
 set -e
 
-cd /opt/athenz/athenz-ui*/keys
+cd /opt/athenz/athenz-ui-*-SNAPSHOT/keys
 if [ ! -f "./athenz.ui.pem" ]; then
     echo "---initializing ui---"
     echo "---creating private/public key for ui---"
@@ -42,7 +44,7 @@ if [ ! -f "./athenz.ui.pem" ]; then
     cp /opt/athenz/athenz-zms*/var/zms_server/certs/zms_cert.pem .
 fi
 
-cd /opt/athenz/athenz-utils*/bin/linux
+cd /opt/athenz/athenz-utils-*-SNAPSHOT/bin/linux
 
 echo "---creating ntoken---"
 ntoken=$(curl --silent -H "Authorization:Basic YXRoZW56OmF0aGVueg==" -k https://$hostname:4443/zms/v1/user/athenz/token | grep -o '\"token\":.*\"' | cut -d':' -f2 | sed 's/\"//'g )
@@ -67,7 +69,7 @@ if [ $domainNotExist -eq "1" ]; then
     sudo ./zms-cli -c /opt/athenz/athenz-ui*/keys/zms_cert.pem -z https://$hostname:4443/zms/v1 -d athenz add-service ui 0 /opt/athenz/athenz-ui*/keys/athenz.ui_pub.pem
 fi
 
-cd /opt/athenz/athenz-ui*/
+cd /opt/athenz/athenz-ui-*-SNAPSHOT/
 if [ ! -f "./config/athenz.conf" ]; then
     echo "---generate Athenz UI Configuration File---"
     sudo /opt/athenz/athenz-utils*/bin/linux/athenz-conf -k -o ./config/athenz.conf -c /opt/athenz/athenz-zms*/var/zms_server/certs/zms_cert.pem -z https://$hostname:4443/
@@ -77,7 +79,7 @@ echo "---installing npm packages for athenz ui---"
 npm install
 
 echo "---starting athenz ui---"
-cd /opt/athenz/athenz-ui*/
+cd /opt/athenz/athenz-ui-*-SNAPSHOT/
 if [ -z "${ZMS_SERVER}" ]; then
     export ZMS_SERVER=$public_hostname
 fi
@@ -86,14 +88,14 @@ if [ -z "${UI_SERVER}" ]; then
 fi
 bin/athenz_ui start
 
-cd /opt/athenz/athenz-zts*/var/zts_server/keys
+cd /opt/athenz/athenz-zts-*-SNAPSHOT/var/zts_server/keys
 if [ ! -f "./zts_private.pem" ]; then
     echo "---initializing zts---"
     echo "---creating private/public key for zts---"
     openssl genrsa -out zts_private.pem 2048
     openssl rsa -in zts_private.pem -pubout > zts_public.pem
 fi
-cd /opt/athenz/athenz-zts*/var/zts_server/certs
+cd /opt/athenz/athenz-zts-*-SNAPSHOT/var/zts_server/certs
 if [ ! -f "./zts_key.pem" ]; then
     echo "---copying zms X509 Certificate as zts X509 Certificate---"
     cp /opt/athenz/athenz-zms*/var/zms_server/certs/zms_key.pem zts_key.pem
@@ -111,13 +113,13 @@ if [ ! -f "./zts_truststore.jks" ]; then
     keytool -importcert -noprompt -alias zms -keystore zts_truststore.jks -file zms_cert.pem -storepass athenz
 fi
 
-cd /opt/athenz/athenz-zts*
+cd /opt/athenz/athenz-zts-*-SNAPSHOT
 if [ ! -f "./conf/zts_server/athenz.conf" ]; then
     echo "---generate Athenz Configuration File---"
     sudo /opt/athenz/athenz-utils*/bin/linux/athenz-conf -k -o ./conf/zts_server/athenz.conf -c /opt/athenz/athenz-zts*/var/zts_server/certs/zms_cert.pem -z https://$hostname:4443/ -t https://$hostname:8443/
 fi
 
-cd /opt/athenz/athenz-utils*/bin/linux
+cd /opt/athenz/athenz-utils-*-SNAPSHOT/bin/linux
 serviceNotExist=$(sudo ./zms-cli -i user.athenz -c /opt/athenz/athenz-zts*/var/zts_server/certs/zms_cert.pem -z https://$hostname:4443/zms/v1 -d sys.auth show-service zts | grep '404' | wc -l)
 if [ $serviceNotExist -eq "1" ]; then
     echo "---registering zts service to zms---"
@@ -125,6 +127,6 @@ if [ $serviceNotExist -eq "1" ]; then
 fi
 
 echo "---starting athenz zts---"
-cd /opt/athenz/athenz-zts*/
+cd /opt/athenz/athenz-zts-*-SNAPSHOT/
 
 sudo bin/zts start

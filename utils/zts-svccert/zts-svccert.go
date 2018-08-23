@@ -28,9 +28,10 @@ type signer struct {
 func main() {
 	var ztsURL, serviceKey, serviceCert, domain, service, keyID string
 	var caCertFile, certFile, signerCertFile, dnsDomain, hdr string
-	var csr bool
+	var csr, skipVerify bool
 	var expiryTime int
 	flag.BoolVar(&csr, "csr", false, "request csr only")
+	flag.BoolVar(&skipVerify, "k", false, "Disable peer verification of SSL certificates")
 	flag.IntVar(&expiryTime, "expiry-time", 0, "expiry time in minutes")
 	flag.StringVar(&certFile, "cert-file", "", "output certificate file")
 	flag.StringVar(&signerCertFile, "signer-cert-file", "", "output signer certificate file")
@@ -89,9 +90,9 @@ func main() {
 	// we're going to generate a ntoken for our request
 	var client *zts.ZTSClient
 	if serviceCert == "" {
-		client, err = ntokenClient(ztsURL, domain, service, keyID, caCertFile, hdr, keyBytes)
+		client, err = ntokenClient(ztsURL, domain, service, keyID, caCertFile, hdr, keyBytes, skipVerify)
 	} else {
-		client, err = certClient(ztsURL, keyBytes, serviceCert, caCertFile)
+		client, err = certClient(ztsURL, keyBytes, serviceCert, caCertFile, skipVerify)
 	}
 	if err != nil {
 		log.Fatalln(err)
@@ -183,7 +184,7 @@ func generateCSR(keySigner *signer, commonName, host string) (string, error) {
 	return buf.String(), nil
 }
 
-func ntokenClient(ztsURL, domain, service, keyID, caCertFile, hdr string, keyBytes []byte) (*zts.ZTSClient, error) {
+func ntokenClient(ztsURL, domain, service, keyID, caCertFile, hdr string, keyBytes []byte, skipVerify bool) (*zts.ZTSClient, error) {
 	// get token builder instance
 	builder, err := zmssvctoken.NewTokenBuilder(domain, service, keyBytes, keyID)
 	if err != nil {
@@ -207,7 +208,8 @@ func ntokenClient(ztsURL, domain, service, keyID, caCertFile, hdr string, keyByt
 		Proxy: http.ProxyFromEnvironment,
 		ResponseHeaderTimeout: 30 * time.Second,
 	}
-	if caCertFile != "" {
+/*
+	if caCertFile != "" || skipVerify {
 		config := &tls.Config{}
 		certPool := x509.NewCertPool()
 		caCert, err := ioutil.ReadFile(caCertFile)
@@ -217,26 +219,38 @@ func ntokenClient(ztsURL, domain, service, keyID, caCertFile, hdr string, keyByt
 		certPool.AppendCertsFromPEM(caCert)
 		config.RootCAs = certPool
 		transport.TLSClientConfig = config
+		if skipVerify {
+			config.InsecureSkipVerify = skipVerify
+		}
 	}
+*/
+	config := &tls.Config{}
+	if skipVerify {
+		config.InsecureSkipVerify = skipVerify
+	}
+	transport.TLSClientConfig = config
 	// use the ntoken to talk to Athenz
 	client := zts.NewClient(ztsURL, transport)
 	client.AddCredentials(hdr, ntoken)
 	return &client, nil
 }
 
-func certClient(ztsURL string, keyBytes []byte, certfile, caCertFile string) (*zts.ZTSClient, error) {
+func certClient(ztsURL string, keyBytes []byte, certfile, caCertFile string, skipVerify bool) (*zts.ZTSClient, error) {
 	certpem, err := ioutil.ReadFile(certfile)
 	if err != nil {
 		return nil, err
 	}
 	var cacertpem []byte
-	if caCertFile != "" {
+	if caCertFile != "" || skipVerify {
 		cacertpem, err = ioutil.ReadFile(caCertFile)
 		if err != nil {
 			return nil, err
 		}
 	}
 	config, err := tlsConfiguration(keyBytes, certpem, cacertpem)
+	if skipVerify {
+		config.InsecureSkipVerify = skipVerify
+	}
 	if err != nil {
 		return nil, err
 	}

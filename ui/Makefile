@@ -14,7 +14,7 @@ ifdef NPM
 all:
 	@echo "Building Athenz UI"
 	npm install
-	$(PWD)/node_modules/grunt-cli/bin/grunt
+	#$(PWD)/node_modules/grunt-cli/bin/grunt
 
 else
 
