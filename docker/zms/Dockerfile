@@ -6,6 +6,10 @@ WORKDIR /opt/athenz/zms
 
 COPY --from=builder /opt/athenz/zms .
 
-ENTRYPOINT ["java"]
-CMD ["-classpath", "lib/jars/*", "-Dathenz.prop_file=conf/zms_server/athenz.properties", "-Dathenz.zms.prop_file=conf/zms_server/zms.properties", "-Dlogback.configurationFile=conf/zms_server/logback.xml", "com.yahoo.athenz.container.AthenzJettyContainer"]
+ENV JAVA_OPTS=''
+ENV CLASSPATH='lib/jars/*'
+ENV USER_CLASSPATH='/usr/lib/jars/*'
+ENV CONF_PATH='conf/zms_server'
 
+ENTRYPOINT ["sh", "-c", "eval $0 $@", "java"]
+CMD ["${JAVA_OPTS}", "-classpath", "${CLASSPATH}:${USER_CLASSPATH}", "-Dathenz.prop_file=${CONF_PATH}/athenz.properties", "-Dathenz.zms.prop_file=${CONF_PATH}/zms.properties", "-Dlogback.configurationFile=${CONF_PATH}/logback.xml", "com.yahoo.athenz.container.AthenzJettyContainer"]
