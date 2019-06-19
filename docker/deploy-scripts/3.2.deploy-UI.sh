@@ -12,6 +12,8 @@ UI_PK_PATH=${UI_PK_PATH:-./docker/ui/var/certs/ui_key.pem}
 UI_X509_OUT_PATH=${UI_X509_OUT_PATH:-./docker/ui/var/certs/ui_cert.pem}
 UI_SERVICE_PK_PATH=${UI_SERVICE_PK_PATH:-./docker/ui/var/keys/athenz.ui-server.pem}
 UI_SERVICE_PUB_PATH=${UI_SERVICE_PUB_PATH:-./docker/ui/var/keys/athenz.ui-server_pub.pem}
+ZMS_HOST=${ZMS_HOST:-athenz-zms-server}
+UI_HOST=${UI_HOST:-athenz-ui-server}
 
 # start UI
 printf "\nWill start Athenz UI...\n"
@@ -22,6 +24,6 @@ docker run -d -h localhost \
   -v "`pwd`/${UI_X509_OUT_PATH}:/opt/athenz/ui/keys/ui_cert.pem" \
   -v "`pwd`/${UI_SERVICE_PK_PATH}:/opt/athenz/ui/keys/$(basename $UI_SERVICE_PK_PATH)" \
   -v "`pwd`/${UI_SERVICE_PUB_PATH}:/opt/athenz/ui/keys/$(basename $UI_SERVICE_PUB_PATH)" \
-  -e "ZMS_SERVER=`hostname`" \
-  -e "UI_SERVER=`hostname`" \
+  -e "ZMS_SERVER=localhost" \
+  -e "UI_SERVER=localhost" \
   --name athenz-ui athenz-ui
