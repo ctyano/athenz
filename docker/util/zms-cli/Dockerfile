@@ -32,4 +32,6 @@ ENV APP_NAME zms-cli
 
 COPY --from=builder /usr/bin/${APP_NAME} /usr/bin/${APP_NAME}
 
+USER ${APP_NAME}:${APP_NAME}
+
 ENTRYPOINT ["/usr/bin/zms-cli"]

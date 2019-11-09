@@ -30,7 +30,7 @@
 cd `git rev-parse --show-toplevel`/docker
 
 # there are a lot of build logs. You may want to check it inside a log file later on.
-make build | tee ./athenz-docker-build.log
+make build
 ```
 
 <a id="markdown-deploy-athenz" name="deploy-athenz"></a>
@@ -115,8 +115,8 @@ less ./logs/zms/server.log
 less ./logs/zts/server.log
 
 # remove single docker
-docker stop athenz-zms-server; docker rm athenz-zms-server; sudo rm -f ./logs/zms/*
-docker stop athenz-zts-server; docker rm athenz-zts-server; sudo rm -f ./logs/zts/*
+docker stop athenz-zms-server; docker rm athenz-zms-server; rm -f ./logs/zms/*
+docker stop athenz-zts-server; docker rm athenz-zts-server; rm -f ./logs/zts/*
 docker stop athenz-ui; docker rm athenz-ui
 
 # inspect
@@ -135,8 +135,8 @@ curl -k -o - https://localhost:4443/zms/v1/status
 curl -k -o - https://localhost:8443/zts/v1/status
 
 # mysql
-mysql -v -u root --host=127.0.0.1 --port=3306 --password=${ZMS_JDBC_PASSWORD} --database=zms_server -e 'show tables;'
-mysql -v -u root --host=127.0.0.1 --port=3307 --password=${ZTS_CERT_JDBC_PASSWORD} --database=zts_store -e 'show tables;'
+mysql -v -u root --host=127.0.0.1 --port=3306 --password=${ZMS_DB_ROOT_PASS} --database=zms_server -e 'show tables;'
+mysql -v -u root --host=127.0.0.1 --port=3307 --password=${ZTS_DB_ROOT_PASS} --database=zts_store -e 'show tables;'
 
 # keytool
 openssl pkey -in ./zms/var/certs/zms_key.pem
