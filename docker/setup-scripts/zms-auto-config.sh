@@ -105,7 +105,7 @@ echo 'add ZMS host' | colored_cat y
 
 echo 'ZMS health check' | colored_cat y
 {
-    curl -v --silent "http://${ZMS_HOST}:${ZMS_PORT}/zms/v1/status"; echo '';
+    curl --silent --cacert "${ATHENZ_CA_PATH}" "https://${ZMS_HOST}:${ZMS_PORT}/zms/v1/status"; echo '';
 } | colored_cat w
 
 
