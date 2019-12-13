@@ -17,25 +17,13 @@ build:
 	# DOCKER_BUILDKIT=1 docker build -t athenz-zms-cli -f ./util/zms-cli/Dockerfile ../
 	# DOCKER_BUILDKIT=1 docker build -t athenz-cli-util -f ./util/Dockerfile ../
 
-# setup-dev-config:
-# 	sh ./setup-scripts/all-in-one.dev.sh
+deploy-dev:
+	sh ./setup-scripts/self-signed-certificates.sh
+	sh ./setup-scripts/zms-auto-config.sh
+	sh ./setup-scripts/zts-auto-config.sh
+
 setup-docker-network:
 	docker network create --subnet $${DOCKER_NETWORK_SUBNET:-172.21.0.0/16} $${DOCKER_NETWORK:-athenz}
-
-# run-docker-dev: run-zms-dev run-zts run-ui
-# run-zms-dev:
-# 	sh ./deploy-scripts/1.1.deploy-ZMS.sh
-# 	sh ./deploy-scripts/1.2.config-zms-domain-admin.dev.sh
-# 	echo '"run-zms-dev" step DONE!'
-# run-zts:
-# 	sh ./deploy-scripts/2.1.register-ZTS-service.sh
-# 	sh ./deploy-scripts/2.2.create-athenz-conf.sh
-# 	sh ./deploy-scripts/2.3.deploy-ZTS.sh
-# 	echo '"run-zms" step DONE!'
-# run-ui:
-# 	sh ./deploy-scripts/3.1.register-UI-service.sh
-# 	sh ./deploy-scripts/3.2.deploy-UI.sh
-# 	echo '"run-ui" step DONE!'
 
 remove-all: remove-containers remove-networks remove-files
 remove-containers:
@@ -44,6 +32,7 @@ remove-containers:
 remove-networks:
 	docker network rm $${DOCKER_NETWORK:-athenz} || true
 remove-files:
+	# rm -rf ./jars
 	rm -rf ./logs
 	rm -rf ./zts/var/zts_store
 

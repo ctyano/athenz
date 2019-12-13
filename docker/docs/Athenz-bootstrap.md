@@ -102,6 +102,8 @@ In Athenz, we often have 3 types of CA:
 ### automation shortcut
 
 ```bash
+# make deploy-dev
+
 BASE_DIR="`git rev-parse --show-toplevel`"
 SETUP_DIR="${BASE_DIR}/docker/setup-scripts"
 
@@ -124,5 +126,5 @@ git reset --hard HEAD; git clean -fdx
 1. [later] integrate `HttpCertSigner` with [Let's Encrypt](https://letsencrypt.org/)
 1. [later] fix "Missing key manager password for the key store: " in `com.yahoo.athenz.common.utils.SSLUtils`
     - remove `athenz.zms.client.keymanager_password=dummy` in `zts.properties`
-1. [later] support auto ZTS client certificate rotate in ZMS client inside ZTS (`ZMSFileChangeLogStore`)
+1. [later] support auto ZTS client certificate rotation in ZMS client inside ZTS (`ZMSFileChangeLogStore`)
 1. [later] dead link ZMS_JSON_PARSER_ERROR_RESPONSE, need fix
