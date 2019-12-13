@@ -78,6 +78,7 @@ docker run -d -h "${ZTS_HOST}" \
   -v "`pwd`/zts/conf:/opt/athenz/zts/conf/zts_server" \
   -v "`pwd`/logs/zts:/opt/athenz/zts/logs/zts_server" \
   -v "`pwd`/jars:/usr/lib/jars" \
+  -e "JAVA_OPTS=${ZTS_JAVA_OPTS}" \
   -e "ZTS_DB_ADMIN_PASS=${ZTS_DB_ADMIN_PASS}" \
   -e "ZTS_KEYSTORE_PASS=${ZTS_KEYSTORE_PASS}" \
   -e "ZTS_TRUSTSTORE_PASS=${ZTS_TRUSTSTORE_PASS}" \

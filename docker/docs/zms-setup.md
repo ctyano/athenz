@@ -196,7 +196,7 @@ llm | tail
 # grep "${ZMS_HOST}" /etc/hosts && echo '/etc/hosts already set' || sudo sed -i "$ a\127.0.0.1 ${ZMS_HOST}" /etc/hosts
 
 # ZMS health check
-curl -v --silent "http://${ZMS_HOST}:${ZMS_PORT}/zms/v1/status"; echo '';
+curl --silent --cacert "${ATHENZ_CA_PATH}" "https://${ZMS_HOST}:${ZMS_PORT}/zms/v1/status"; echo '';
 
 # get domains
 ZMS_URL="http://${ZMS_HOST}:${ZMS_PORT}"

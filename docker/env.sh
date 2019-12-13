@@ -10,6 +10,8 @@ export JARS_DIR="${DOCKER_DIR}/jars"
 mkdir -p "${JARS_DIR}"
 
 ### ----------------------------------------------------------------
+# ZMS JAVA OPTS
+export ZMS_JAVA_OPTS=''
 # ZMS dirs
 export ZMS_DIR="${DOCKER_DIR}/zms"
 export ZMS_LOGS_DIR="${DOCKER_DIR}/logs/zms"
@@ -33,6 +35,8 @@ export ZMS_CERT_KEY_PATH="${PROD_ZMS_DIR}/zms_key.pem"
 export ZMS_CERT_PATH="${PROD_ZMS_DIR}/zms_cert.pem"
 
 ### ----------------------------------------------------------------
+# ZTS JAVA OPTS
+export ZTS_JAVA_OPTS=''
 # ZTS dirs
 export ZTS_DIR="${DOCKER_DIR}/zts"
 export ZTS_LOGS_DIR="${DOCKER_DIR}/logs/zts"

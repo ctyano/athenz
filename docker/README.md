@@ -9,15 +9,16 @@
     - [Prerequisite](#prerequisite)
     - [Build Athenz](#build-athenz)
     - [Deploy Athenz](#deploy-athenz)
-    - [Verify Athenz setup](#verify-athenz-setup)
+    - [Verify Athenz Deployment](#verify-athenz-deployment)
+        - [JAVA Remote debugging](#java-remote-debugging)
     - [Cleanup](#cleanup)
     - [Appendix](#appendix)
         - [Important Files](#important-files)
         - [[WIP] Configuration Details](#wip-configuration-details)
         - [Useful Commands](#useful-commands)
-        - [[WIP] deploy with docker-stack](#wip-deploy-with-docker-stack)
+        - [[WIP] Deploy with docker-stack](#wip-deploy-with-docker-stack)
         - [TODO](#todo)
-        - [UI section (backup)](#ui-section-backup)
+        - [UI Section (backup)](#ui-section-backup)
 
 <!-- /TOC -->
 
@@ -46,10 +47,37 @@ make build
     make deploy-dev
     ```
 
-<a id="markdown-verify-athenz-setup" name="verify-athenz-setup"></a>
-## Verify Athenz setup
+<a id="markdown-verify-athenz-deployment" name="verify-athenz-deployment"></a>
+## Verify Athenz Deployment
 
 - [acceptance-test](./docs/acceptance-test.md)
+
+<a id="markdown-java-remote-debugging" name="java-remote-debugging"></a>
+### JAVA Remote debugging
+
+```bash
+### ZMS
+ZMS_DEBUG_PORT=8001
+ZMS_JAVA_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${ZMS_DEBUG_PORT}"
+docker run --rm \
+    --network="${DOCKER_NETWORK}" \
+    -p "${ZMS_DEBUG_PORT}:${ZMS_DEBUG_PORT}" \
+    --link "${ZMS_HOST}:target" \
+    alpine/socat \
+    "tcp-listen:${ZMS_DEBUG_PORT},fork,reuseaddr" \
+    "tcp-connect:target:${ZMS_DEBUG_PORT}"
+
+### ZTS
+ZTS_DEBUG_PORT=8002
+ZMS_JAVA_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${ZMS_DEBUG_PORT}"
+docker run --rm \
+    --network="${DOCKER_NETWORK}" \
+    -p "${ZTS_DEBUG_PORT}:${ZTS_DEBUG_PORT}" \
+    --link "${ZTS_HOST}:target" \
+    alpine/socat \
+    "tcp-listen:${ZTS_DEBUG_PORT},fork,reuseaddr" \
+    "tcp-connect:target:${ZTS_DEBUG_PORT}"
+```
 
 <a id="markdown-cleanup" name="cleanup"></a>
 ## Cleanup
@@ -139,7 +167,7 @@ keytool -list -keystore ./zts/var/certs/zts_truststore.jks
 ```
 
 <a id="markdown-wip-deploy-with-docker-stack" name="wip-deploy-with-docker-stack"></a>
-### [WIP] deploy with docker-stack
+### [WIP] Deploy with docker-stack
 ```bash
 cd `git rev-parse --show-toplevel`/docker
 
@@ -224,7 +252,7 @@ sudo systemctl restart docker
 
 
 <a id="markdown-ui-section-backup" name="ui-section-backup"></a>
-### UI section (backup)
+### UI Section (backup)
 
 ```bash
 # 4.1 (optional) if you are running web browser and docker containers in the same host

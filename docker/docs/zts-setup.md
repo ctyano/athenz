@@ -317,7 +317,7 @@ llt | tail
 # grep "${ZTS_HOST}" /etc/hosts && echo '/etc/hosts already set' || sudo sed -i "$ a\127.0.0.1 ${ZTS_HOST}" /etc/hosts
 
 # ZTS health check
-curl -v --silent "http://${ZTS_HOST}:${ZTS_PORT}/zts/v1/status"; echo '';
+curl --silent --cacert "${ATHENZ_CA_PATH}" "https://${ZTS_HOST}:${ZTS_PORT}/zts/v1/status"; echo '';
 ```
 
 <a id="markdown-appendix" name="appendix"></a>

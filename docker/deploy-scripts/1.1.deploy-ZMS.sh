@@ -78,6 +78,7 @@ docker run -d -h "${ZMS_HOST}" \
   -v "`pwd`/zms/conf:/opt/athenz/zms/conf/zms_server" \
   -v "`pwd`/logs/zms:/opt/athenz/zms/logs/zms_server" \
   -v "`pwd`/jars:/usr/lib/jars" \
+  -e "JAVA_OPTS=${ZMS_JAVA_OPTS}" \
   -e "ZMS_DB_ADMIN_PASS=${ZMS_DB_ADMIN_PASS}" \
   -e "ZMS_KEYSTORE_PASS=${ZMS_KEYSTORE_PASS}" \
   -e "ZMS_TRUSTSTORE_PASS=${ZMS_TRUSTSTORE_PASS}" \
