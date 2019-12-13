@@ -58,7 +58,7 @@ make build
 ```bash
 ### ZMS
 ZMS_DEBUG_PORT=8001
-ZMS_JAVA_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${ZMS_DEBUG_PORT}"
+export ZMS_JAVA_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${ZMS_DEBUG_PORT}"
 # deploy ZMS
 # expose debug port
 docker run --rm \
@@ -71,7 +71,7 @@ docker run --rm \
 
 ### ZTS
 ZTS_DEBUG_PORT=8002
-ZMS_JAVA_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${ZMS_DEBUG_PORT}"
+export ZTS_JAVA_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${ZTS_DEBUG_PORT}"
 # deploy ZTS
 # expose debug port
 docker run --rm \
