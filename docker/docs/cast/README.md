@@ -22,7 +22,7 @@
 
 <a id="markdown-web" name="web"></a>
 #### web
-- [Athenz Bootstrap Demo](https://asciinema.org/a/ONXVQTmczMvFrsmHFbajM1gY6)
+- [Athenz Bootstrap Demo](https://asciinema.org/a/288398)
 
 <a id="markdown-docker" name="docker"></a>
 #### docker
@@ -53,10 +53,15 @@ BASE_DIR="`git rev-parse --show-toplevel`"
 CAST_DIR="${BASE_DIR}/docker/docs/cast"
 
 asciinema rec --overwrite --title='Athenz Docker Build Demo' "${CAST_DIR}/athenz-docker-build-demo.cast"
-# cd "`git rev-parse --show-toplevel`/docker"; make build; exit;
+# cd "`git rev-parse --show-toplevel`/docker";
+# make build;
+# exit;
 
 asciinema rec --overwrite --title='Athenz Bootstrap Demo' "${CAST_DIR}/athenz-bootstrap-demo.cast"
-# sh "`git rev-parse --show-toplevel`/docker/docs/cast/bootstrap-demo-welcome-script.sh"
+# cd "`git rev-parse --show-toplevel`/docker";
+# sh ./docs/cast/bootstrap-demo-welcome-script.sh;
+# make deploy-dev;
+# exit;
 
 # asciinema rec --overwrite --title='Athenz Acceptance Test Demo' "${CAST_DIR}/athenz-acceptance-test-demo.cast"
 ```

@@ -89,7 +89,7 @@ In Athenz, we often have 3 types of CA:
 <a id="markdown-athenz-demo-playback" name="athenz-demo-playback"></a>
 ### Athenz Demo Playback
 - [cast](./cast)
-- [![asciicast](https://asciinema.org/a/ONXVQTmczMvFrsmHFbajM1gY6.svg)](https://asciinema.org/a/ONXVQTmczMvFrsmHFbajM1gY6)
+- [![asciicast](https://asciinema.org/a/288398.svg)](https://asciinema.org/a/288398)
 
 <a id="markdown-points-to-note" name="points-to-note"></a>
 ### points to note
@@ -127,4 +127,3 @@ git reset --hard HEAD; git clean -fdx
 1. [later] fix "Missing key manager password for the key store: " in `com.yahoo.athenz.common.utils.SSLUtils`
     - remove `athenz.zms.client.keymanager_password=dummy` in `zts.properties`
 1. [later] support auto ZTS client certificate rotation in ZMS client inside ZTS (`ZMSFileChangeLogStore`)
-1. [later] dead link ZMS_JSON_PARSER_ERROR_RESPONSE, need fix

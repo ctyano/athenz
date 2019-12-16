@@ -26,6 +26,8 @@
 ## Prerequisite
 - `docker`
 - `make`
+- `openssl`
+- `keytool`
 
 <a id="markdown-build-athenz" name="build-athenz"></a>
 ## Build Athenz
