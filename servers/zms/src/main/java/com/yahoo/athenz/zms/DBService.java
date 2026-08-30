@@ -33,9 +33,11 @@ import com.yahoo.athenz.common.server.store.*;
 import com.yahoo.athenz.common.server.util.AuthzHelper;
 import com.yahoo.athenz.common.server.util.PrincipalUtils;
 import com.yahoo.athenz.common.server.util.ResourceUtils;
+import com.yahoo.athenz.common.server.util.Utils;
 import com.yahoo.athenz.common.server.util.config.dynamic.DynamicConfigInteger;
 import com.yahoo.athenz.zms.assertion.ResourceUpdaterManager;
 import com.yahoo.athenz.zms.config.MemberDueDays;
+import com.yahoo.athenz.zms.config.SolutionTemplates;
 import com.yahoo.athenz.zms.utils.ZMSUtils;
 import com.yahoo.rdl.JSON;
 import com.yahoo.rdl.Timestamp;
@@ -134,6 +136,8 @@ public class DBService implements RolesProvider, DomainProvider {
                 System.getProperty(ZMSConsts.ZMS_PROP_ENFORCE_UNIQUE_GCP_PROJECTS, "true")));
         domainOptions.setEnforceUniqueProductIds(Boolean.parseBoolean(
                 System.getProperty(ZMSConsts.ZMS_PROP_ENFORCE_UNIQUE_PRODUCT_IDS, "true")));
+        domainOptions.setAllowMultipleAWSAccounts(Boolean.parseBoolean(
+                System.getProperty(ZMSConsts.ZMS_PROP_ALLOW_MULTIPLE_AWS_ACCOUNTS, "false")));
 
         if (this.store != null) {
             this.store.setOperationTimeout(defaultOpTimeout);
@@ -397,6 +401,12 @@ public class DBService implements RolesProvider, DomainProvider {
 
     Domain makeDomain(ResourceContext ctx, Domain domain, List<String> adminUsers,
             List<String> solutionTemplates, String auditRef) {
+        return makeDomain(ctx, domain, adminUsers, solutionTemplates, auditRef,
+                zmsConfig.getServerSolutionTemplates());
+    }
+
+    Domain makeDomain(ResourceContext ctx, Domain domain, List<String> adminUsers,
+            List<String> solutionTemplates, String auditRef, SolutionTemplates serverSolutionTemplates) {
 
         final String caller = "makedomain";
         final String domainName = domain.getName();
@@ -463,7 +473,7 @@ public class DBService implements RolesProvider, DomainProvider {
                     for (String templateName : solutionTemplates) {
                         auditDetails.append(", \"template\": ");
                         if (!addSolutionTemplate(ctx, con, domainName, templateName, principalName,
-                                null, auditRef, auditDetails)) {
+                                null, auditRef, auditDetails, serverSolutionTemplates)) {
                             rollbackChanges(con);
                             throw ZMSUtils.internalServerError("makeDomain: Cannot apply templates: " +
                                     domain, caller);
@@ -4909,6 +4919,21 @@ public class DBService implements RolesProvider, DomainProvider {
         return oldValue.equals(newValue);
     }
 
+    boolean isDeleteSystemMetaAllowed(boolean deleteAllowed, final Set<String> oldValues, final Set<String> newValues) {
+
+        // if authorized or old value is not set, then there is
+        // no need to check any value
+
+        if (deleteAllowed || oldValues.isEmpty()) {
+            return true;
+        }
+
+        // since our old value is not empty then we will only
+        // allow if the new set of accounts is identical
+
+        return oldValues.equals(newValues);
+    }
+
     boolean isDeleteSystemMetaAllowed(boolean deleteAllowed, Integer oldValue, Integer newValue) {
 
         // if authorized or old value is not set, then there is
@@ -4934,7 +4959,8 @@ public class DBService implements RolesProvider, DomainProvider {
 
         switch (attribute) {
             case ZMSConsts.SYSTEM_META_ACCOUNT:
-                if (!isDeleteSystemMetaAllowed(deleteAllowed, domain.getAccount(), meta.getAccount())) {
+                if (!isDeleteSystemMetaAllowed(deleteAllowed, Utils.parseAwsAccounts(domain.getAccount()),
+                        Utils.parseAwsAccounts(meta.getAccount()))) {
                     throw ZMSUtils.forbiddenError("unauthorized to reset system meta attribute: " + attribute, caller);
                 }
                 domain.setAccount(meta.getAccount());
@@ -5098,6 +5124,12 @@ public class DBService implements RolesProvider, DomainProvider {
 
     void executePutDomainTemplate(ResourceContext ctx, String domainName, DomainTemplate domainTemplate,
             String auditRef, String caller) {
+        executePutDomainTemplate(ctx, domainName, domainTemplate, auditRef, caller,
+                zmsConfig.getServerSolutionTemplates());
+    }
+
+    void executePutDomainTemplate(ResourceContext ctx, String domainName, DomainTemplate domainTemplate,
+            String auditRef, String caller, SolutionTemplates serverSolutionTemplates) {
 
         // our exception handling code does the check for retry count
         // and throws the exception it had received when the retry
@@ -5123,7 +5155,7 @@ public class DBService implements RolesProvider, DomainProvider {
                 for (String templateName : domainTemplate.getTemplateNames()) {
                     firstEntry = auditLogSeparator(auditDetails, firstEntry);
                     if (!addSolutionTemplate(ctx, con, domainName, templateName, principalName,
-                            domainTemplate.getParams(), auditRef, auditDetails)) {
+                            domainTemplate.getParams(), auditRef, auditDetails, serverSolutionTemplates)) {
                         rollbackChanges(con);
                         throw ZMSUtils.internalServerError("unable to put domain templates: " + domainName, caller);
                     }
@@ -5151,6 +5183,12 @@ public class DBService implements RolesProvider, DomainProvider {
 
     void executeDeleteDomainTemplate(ResourceContext ctx, String domainName, String templateName,
             String auditRef, String caller) {
+        executeDeleteDomainTemplate(ctx, domainName, templateName, auditRef, caller,
+                zmsConfig.getServerSolutionTemplates());
+    }
+
+    void executeDeleteDomainTemplate(ResourceContext ctx, String domainName, String templateName,
+            String auditRef, String caller, SolutionTemplates serverSolutionTemplates) {
 
         // our exception handling code does the check for retry count
         // and throws the exception it had received when the retry
@@ -5170,7 +5208,7 @@ public class DBService implements RolesProvider, DomainProvider {
                 StringBuilder auditDetails = new StringBuilder(ZMSConsts.STRING_BLDR_SIZE_DEFAULT);
                 auditDetails.append("{\"templates\": ");
 
-                Template template = zmsConfig.getServerSolutionTemplates().get(templateName);
+                Template template = serverSolutionTemplates.get(templateName);
                 deleteSolutionTemplate(ctx, con, domainName, templateName, template, auditDetails);
 
                 auditDetails.append("}");
@@ -5197,13 +5235,20 @@ public class DBService implements RolesProvider, DomainProvider {
     boolean addSolutionTemplate(ResourceContext ctx, ObjectStoreConnection con, String domainName, String templateName,
             String admin, List<TemplateParam> templateParams, String auditRef, StringBuilder auditDetails)
             throws ServerResourceException {
+        return addSolutionTemplate(ctx, con, domainName, templateName, admin, templateParams, auditRef,
+                auditDetails, zmsConfig.getServerSolutionTemplates());
+    }
+
+    boolean addSolutionTemplate(ResourceContext ctx, ObjectStoreConnection con, String domainName, String templateName,
+            String admin, List<TemplateParam> templateParams, String auditRef, StringBuilder auditDetails,
+            SolutionTemplates serverSolutionTemplates) throws ServerResourceException {
 
         auditDetails.append("{\"name\": \"").append(templateName).append('\"');
 
         // we have already verified that our template is valid, but
         // we'll just double-check to make sure it's not null
 
-        Template template = zmsConfig.getServerSolutionTemplates().get(templateName);
+        Template template = serverSolutionTemplates.get(templateName);
         if (template == null) {
             auditDetails.append("}");
             return true;
@@ -9010,6 +9055,11 @@ public class DBService implements RolesProvider, DomainProvider {
     }
 
     Map<String, List<String>> applyTemplatesForListOfDomains(Map<String, Integer> templateDetails) {
+        return applyTemplatesForListOfDomains(templateDetails, zmsConfig.getServerSolutionTemplates());
+    }
+
+    Map<String, List<String>> applyTemplatesForListOfDomains(Map<String, Integer> templateDetails,
+            SolutionTemplates serverSolutionTemplates) {
         final String caller = "applyTemplatesForListOfDomains";
         final String auditRef = "AutoApplyTemplate";
         Map<String, List<String>> domainTemplateListMap;
@@ -9025,7 +9075,8 @@ public class DBService implements RolesProvider, DomainProvider {
             //Passing null context since it is an internal call during app start up
             //executePutDomainTemplate can bulk apply templates given a domain hence sending domainName and templatelist
             try {
-                this.executePutDomainTemplate(null, domainName, domainTemplate, auditRef, caller);
+                this.executePutDomainTemplate(null, domainName, domainTemplate, auditRef, caller,
+                        serverSolutionTemplates);
             } catch (Exception ex) {
                 LOG.error("unable to apply template for domain {} and template {} error: {}",
                         domainName, domainTemplate, ex.getMessage());

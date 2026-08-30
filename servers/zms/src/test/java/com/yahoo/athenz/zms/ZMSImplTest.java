@@ -35,6 +35,7 @@ import com.yahoo.athenz.common.config.AuthzDetailsField;
 import com.yahoo.athenz.common.messaging.DomainChangeMessage;
 import com.yahoo.athenz.common.messaging.MockDomainChangePublisher;
 import com.yahoo.athenz.common.metrics.Metric;
+import com.yahoo.athenz.common.server.metastore.DomainMetaStore;
 import com.yahoo.athenz.common.server.log.AuditLogMsgBuilder;
 import com.yahoo.athenz.common.server.log.AuditLogger;
 import com.yahoo.athenz.common.server.log.impl.DefaultAuditLogMsgBuilder;
@@ -50,6 +51,7 @@ import com.yahoo.athenz.zms.ZMSImpl.AccessStatus;
 import com.yahoo.athenz.zms.ZMSImpl.AthenzObject;
 import com.yahoo.athenz.zms.assertion.ResourceUpdaterManager;
 import com.yahoo.athenz.zms.config.MemberDueDays;
+import com.yahoo.athenz.zms.config.SolutionTemplates;
 import com.yahoo.athenz.zms.notification.PutRoleMembershipDecisionNotificationTask;
 import com.yahoo.athenz.zms.notification.PutRoleMembershipNotificationTask;
 import com.yahoo.athenz.zms.status.MockStatusCheckerNoException;
@@ -74,6 +76,7 @@ import org.testng.annotations.*;
 import java.io.*;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.security.PrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.text.DateFormat;
@@ -1009,6 +1012,7 @@ public class ZMSImplTest {
 
         SubDomain dom2 = zmsTestInitializer.createSubDomainObject("AddSubDom2", "AddSubDom1",
                 "Test Domain2", null, zmsTestInitializer.getAdminUser());
+        dom2.setAutoDeleteTenantAssumeRoleAssertions(true);
         Domain resDom1 = zmsImpl.postSubDomain(ctx, "AddSubDom1", auditRef, null, dom2);
         assertNotNull(resDom1);
 
@@ -1017,6 +1021,7 @@ public class ZMSImplTest {
 
         assertEquals(dom2.getOrg(), "testorg");
         assertFalse(resDom2.getAuditEnabled());
+        assertTrue(resDom2.getAutoDeleteTenantAssumeRoleAssertions());
 
         zmsImpl.deleteSubDomain(ctx, "AddSubDom1", "AddSubDom2", auditRef, null);
         zmsImpl.deleteTopLevelDomain(ctx, "AddSubDom1", auditRef, null);
@@ -1062,6 +1067,7 @@ public class ZMSImplTest {
 
         RsrcCtxWrapper ctx = zmsTestInitializer.contextWithMockPrincipal("postUserDomain");
         UserDomain dom1 = zmsTestInitializer.createUserDomainObject("john-doe", "Test Domain1", "testOrg");
+        dom1.setAutoDeleteTenantAssumeRoleAssertions(true);
         zmsImpl.postUserDomain(ctx, "john-doe", auditRef, null, dom1);
 
         assertSingleChangeMessage(ctx.getDomainChangeMessages(), DOMAIN, "user.john-doe",
@@ -1069,6 +1075,7 @@ public class ZMSImplTest {
 
         Domain resDom2 = zmsImpl.getDomain(ctx, "user.john-doe");
         assertNotNull(resDom2);
+        assertTrue(resDom2.getAutoDeleteTenantAssumeRoleAssertions());
 
         RsrcCtxWrapper deleteCtx = zmsTestInitializer.contextWithMockPrincipal("deleteUserDomain");
         zmsImpl.deleteUserDomain(deleteCtx, "john-doe", auditRef, null);
@@ -18878,6 +18885,75 @@ public class ZMSImplTest {
     }
 
     @Test
+    public void testValidateAwsAccountValue() {
+        ZMSImpl zmsImpl = zmsTestInitializer.zmsInit();
+
+        // null/empty values are no-ops
+
+        assertNull(zmsImpl.validateAwsAccountValue(null, "unit-test"));
+        assertEquals(zmsImpl.validateAwsAccountValue("", "unit-test"), "");
+
+        // single account
+
+        assertEquals(zmsImpl.validateAwsAccountValue("1234", "unit-test"), "1234");
+
+        // multiple accounts - returned value is normalized (trimmed, no spaces)
+
+        assertEquals(zmsImpl.validateAwsAccountValue("1234,5678", "unit-test"), "1234,5678");
+        assertEquals(zmsImpl.validateAwsAccountValue(" 1234 , 5678 ", "unit-test"), "1234,5678");
+
+        // invalid account value fails compound name validation
+
+        try {
+            zmsImpl.validateAwsAccountValue("1234,invalid account", "unit-test");
+            fail();
+        } catch (ResourceException ex) {
+            assertEquals(ex.getCode(), 400);
+        }
+
+        // value exceeding the maximum length is rejected
+
+        String tooLong = "1".repeat(ZMSImpl.ACCOUNT_VALUE_MAX_LEN + 1);
+        try {
+            zmsImpl.validateAwsAccountValue(tooLong, "unit-test");
+            fail();
+        } catch (ResourceException ex) {
+            assertEquals(ex.getCode(), 400);
+            assertTrue(ex.getMessage().contains("exceeds maximum length"));
+        }
+
+        zmsImpl.objectStore.clearConnections();
+    }
+
+    @Test
+    public void testIsValidAWSAccounts() throws ServerResourceException {
+        ZMSImpl zmsImpl = zmsTestInitializer.zmsInit();
+
+        DomainMetaStore savedMetaStore = zmsImpl.domainMetaStore;
+        zmsImpl.domainMetaStore = new TestDomainMetaStore();
+
+        // no accounts specified is always valid
+
+        assertTrue(zmsImpl.isValidAWSAccounts("iaas.athenz", null));
+        assertTrue(zmsImpl.isValidAWSAccounts("iaas.athenz", ""));
+
+        // single valid account
+
+        assertTrue(zmsImpl.isValidAWSAccounts("iaas.athenz", "1234"));
+
+        // multiple valid accounts
+
+        assertTrue(zmsImpl.isValidAWSAccounts("iaas.athenz", "1234,5678"));
+
+        // one invalid account in the list fails the whole check
+
+        assertFalse(zmsImpl.isValidAWSAccounts("iaas.athenz", "1234,invalid-5678"));
+
+        zmsImpl.domainMetaStore = savedMetaStore;
+        zmsImpl.objectStore.clearConnections();
+    }
+
+    @Test
     public void testgetModTimestampEmtpy() {
         ZMSImpl zmsImpl = zmsTestInitializer.zmsInit();
         assertEquals(zmsImpl.getModTimestamp(null), 0);
@@ -23680,6 +23756,47 @@ public class ZMSImplTest {
         for (TemplateMetaData template : templates) {
             assertTrue(template.getTemplateName().compareTo(previousTemplateName) >= 0);
             previousTemplateName = template.getTemplateName();
+        }
+    }
+
+    @Test
+    public void testGetServerTemplateDetailsListHandlesNullMetadata() {
+        ZMSImpl zmsImpl = zmsTestInitializer.getZms();
+        RsrcCtxWrapper ctx = zmsTestInitializer.getMockDomRsrcCtx();
+        SolutionTemplatesSnapshot originalSnapshot = zmsImpl.getSolutionTemplatesSnapshot();
+
+        try {
+            SolutionTemplates solutionTemplates = new SolutionTemplates();
+            HashMap<String, Template> templates = new HashMap<>();
+            templates.put("legacy", new Template());
+            templates.put("published", new Template().setMetadata(new TemplateMetaData()
+                    .setCurrentVersion(2)
+                    .setLatestVersion(3)
+                    .setDescription("published template")
+                    .setKeywordsToReplace("service")
+                    .setTimestamp(Timestamp.fromMillis(1000))
+                    .setAutoUpdate(true)));
+            solutionTemplates.setTemplates(templates);
+            zmsImpl.solutionTemplatesManager().setServerSolutionTemplates(solutionTemplates, Path.of("solution-templates-test.json"), 1000L);
+
+            DomainTemplateDetailsList serverTemplateDetailsList = zmsImpl.getServerTemplateDetailsList(ctx);
+            assertEquals(serverTemplateDetailsList.getMetaData().size(), 2);
+
+            TemplateMetaData legacyMetaData = serverTemplateDetailsList.getMetaData().get(0);
+            assertEquals(legacyMetaData.getTemplateName(), "legacy");
+            assertNull(legacyMetaData.getLatestVersion());
+            assertNull(legacyMetaData.getDescription());
+
+            TemplateMetaData publishedMetaData = serverTemplateDetailsList.getMetaData().get(1);
+            assertEquals(publishedMetaData.getTemplateName(), "published");
+            assertEquals(publishedMetaData.getCurrentVersion().intValue(), 2);
+            assertEquals(publishedMetaData.getLatestVersion().intValue(), 3);
+            assertEquals(publishedMetaData.getDescription(), "published template");
+            assertEquals(publishedMetaData.getKeywordsToReplace(), "service");
+            assertEquals(publishedMetaData.getTimestamp(), Timestamp.fromMillis(1000));
+            assertTrue(publishedMetaData.getAutoUpdate());
+        } finally {
+            zmsImpl.solutionTemplatesManager().publishSolutionTemplatesSnapshot(originalSnapshot, true);
         }
     }
 
